@@ -34,8 +34,8 @@ const (
 	RastrTypePartInPart
 )
 
-//PointIntNew is integer point constructor func
-func PointIntNew(x int, y int) PointInt {
+//pointIntNew is integer point constructor func
+func pointIntNew(x int, y int) PointInt {
 	var p PointInt
 	p.X = x
 	p.Y = y
@@ -381,7 +381,7 @@ func (fig *Figure) FigToRastr(rt RastrType, resize int, bound int) (*Rastr, erro
 	for i := 0; i < rastr.Height; i++ {
 		for j := 0; j < rastr.Width; j++ {
 			if rastr.RastrMatrix[i][j] == contour {
-				rastr.OuterContour[count] = PointIntNew(j, i)
+				rastr.OuterContour[count] = pointIntNew(j, i)
 			}
 		}
 	}
