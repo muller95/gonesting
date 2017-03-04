@@ -1,6 +1,7 @@
 package gonest
 
 import (
+	"errors"
 	"math"
 )
 
@@ -11,15 +12,27 @@ const (
 	contour
 )
 
+//PointInt is a representation of coordinate in rastr contour
 type PointInt struct {
 	X, Y int
 }
 
+//Rastr is discrete representation of Figure
 type Rastr struct {
 	RastrMatrix   [][]int
 	Width, Height int
 	OuterContour  []PointInt
 }
+
+//RastrType is type of creating Rastrs from Figures
+type RastrType uint8
+
+const (
+	//RastrTypeSimple is basic rastr with 100% flood fill
+	RastrTypeSimple = iota
+	//RastrTypePartInPart is more complex than simple, it finds holes in figure
+	RastrTypePartInPart
+)
 
 //PointIntNew is integer point constructor func
 func PointIntNew(x int, y int) PointInt {
@@ -289,4 +302,95 @@ func makeBound(rastr *Rastr, bound int) *Rastr {
 	}
 
 	return rastr2
+}
+
+//FigToRastr is transfotmation form continious figure to discrete rastr
+func (fig *Figure) FigToRastr(rt RastrType, resize int, bound int) (*Rastr, error) {
+	if fig.Width < 0 {
+		return nil, errors.New("Negative width")
+	} else if fig.Height < 0 {
+		return nil, errors.New("Negative height")
+	}
+
+	rastr := new(Rastr)
+
+	rastr.Width = int(fig.Width) + 1
+	rastr.Height = int(fig.Height) + 1
+	rastr.OuterContour = make([]PointInt, 1, rastr.Width*rastr.Height)
+	rastr.RastrMatrix = make([][]int, rastr.Height)
+	for i := 0; i < rastr.Height; i++ {
+		rastr.RastrMatrix[i] = make([]int, rastr.Width)
+	}
+
+	for i := 0; i < len(fig.Primitives); i++ {
+		for j := 0; j < len(fig.Primitives[i].Points)-1; j++ {
+			var top, bottom Point
+
+			if fig.Primitives[i].Points[j].Y > fig.Primitives[i].Points[j+1].Y {
+				top = fig.Primitives[i].Points[j]
+				bottom = fig.Primitives[i].Points[j+1]
+			} else {
+				top = fig.Primitives[i].Points[j+1]
+				bottom = fig.Primitives[i].Points[j]
+			}
+
+			intervals := getIntervals(bottom.Y, top.Y)
+
+			if top.Y-bottom.Y > 1.0 {
+				for k := 0; k < len(intervals)-1; k++ {
+					x1 := calcX(top, bottom, intervals[k])
+					x2 := calcX(top, bottom, intervals[k+1])
+					y := intervals[k]
+
+					step := 1.0
+					if x2 <= x1 {
+						step = -1.0
+					}
+					rastr.RastrMatrix[int(y)][int(x1)] = 1
+					rastr.RastrMatrix[int(y)][int(x2)] = 1
+					for x := math.Trunc(x1); x != math.Trunc(x2); x += step {
+						rastr.RastrMatrix[int(y)][int(x)] = 1
+					}
+				}
+			} else {
+				x1 := bottom.X
+				x2 := top.X
+				y := bottom.Y
+
+				step := 1.0
+				if x2 <= x1 {
+					step = -1.0
+				}
+				for x := math.Trunc(x1); x != math.Trunc(x2); x += step {
+					rastr.RastrMatrix[int(y)][int(x)] = 1
+				}
+			}
+		}
+	}
+
+	if bound > 0 {
+		rastr = makeBound(rastr, bound)
+	}
+
+	if resize > 0 {
+		rastr = resizeRastr(rastr, resize)
+	}
+
+	rastr.findContour()
+	count := 0
+	for i := 0; i < rastr.Height; i++ {
+		for j := 0; j < rastr.Width; j++ {
+			if rastr.RastrMatrix[i][j] == contour {
+				rastr.OuterContour[count] = PointIntNew(j, i)
+			}
+		}
+	}
+
+	if rt == RastrTypePartInPart {
+		rastr.floodRastrPartInPart()
+	} else {
+		rastr.floodRastrSimple()
+	}
+
+	return rastr, nil
 }
