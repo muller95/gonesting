@@ -19,7 +19,7 @@ type Primitive struct {
 //Figure is basic gonest type for nesting
 type Figure struct {
 	ID, Quant                int
-	Matrix                   [3][3]float64
+	Matrix                   [][]float64
 	Width, Height, AngleStep float64
 	Primitives               []Primitive
 	MassCenter               Point
@@ -106,7 +106,9 @@ func FigureNew(id int, quant int, angleStep float64, points [][]Point) (*Figure,
 	fig.ID = id
 	fig.Quant = quant
 	fig.AngleStep = angleStep
+	fig.Matrix = make([][]float64, 3)
 	for i := 0; i < 3; i++ {
+		fig.Matrix[i] = make([]float64, 3)
 		fig.Matrix[i][i] = 1
 	}
 
