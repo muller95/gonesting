@@ -33,6 +33,31 @@ func pointNew(x float64, y float64) Point {
 	return p
 }
 
+//Copy creates a copy of current figure
+func (fig *Figure) Copy() *Figure {
+	figCopy := new(Figure)
+
+	figCopy.ID = fig.ID
+	figCopy.Quant = fig.Quant
+	figCopy.Width = fig.Width
+	figCopy.Height = fig.Height
+	figCopy.MassCenter = fig.MassCenter
+
+	figCopy.Matrix = make([][]float64, 3)
+	for i := 0; i < 3; i++ {
+		figCopy.Matrix[i] = make([]float64, 3)
+		copy(figCopy.Matrix[i], fig.Matrix[i])
+	}
+
+	figCopy.Primitives = make([]Primitive, len(fig.Primitives))
+	for i := 0; i < len(fig.Primitives); i++ {
+		figCopy.Primitives[i].Points = make([]Point, len(fig.Primitives[i].Points))
+		copy(figCopy.Primitives[i].Points, fig.Primitives[i].Points)
+	}
+
+	return figCopy
+}
+
 //PrimitiveNew is primitive constructor func
 func primitiveNew(points []Point) Primitive {
 	var prim Primitive
@@ -121,4 +146,19 @@ func FigureNew(id int, quant int, angleStep float64, points [][]Point) (*Figure,
 	fig.calcMassCenter()
 
 	return fig, nil
+}
+
+func MakeSet(figs []*Figure) ([]*Figure, error) {
+	if len(figs) == 0 {
+		return nil, errors.New("Zero len figs array")
+	}
+
+	set := make([]*Figure, 0)
+	for i := 0; i < len(figs); i++ {
+		for j := 0; j < figs[i].Quant; j++ {
+			set = append(set, figs[i].Copy())
+		}
+	}
+
+	return set, nil
 }
