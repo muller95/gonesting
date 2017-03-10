@@ -25,6 +25,9 @@ type Figure struct {
 	MassCenter               Point
 }
 
+//Figures represents slice of *Figure
+type Figures []*Figure
+
 //PointNew is point constructor func
 func pointNew(x float64, y float64) Point {
 	var p Point
@@ -148,12 +151,13 @@ func FigureNew(id int, quant int, angleStep float64, points [][]Point) (*Figure,
 	return fig, nil
 }
 
-func MakeSet(figs []*Figure) ([]*Figure, error) {
+//MakeSet create a set for future nesting
+func MakeSet(figs Figures) (Figures, error) {
 	if len(figs) == 0 {
 		return nil, errors.New("Zero len figs array")
 	}
 
-	set := make([]*Figure, 0)
+	set := make(Figures, 0)
 	for i := 0; i < len(figs); i++ {
 		for j := 0; j < figs[i].Quant; j++ {
 			set = append(set, figs[i].Copy())
@@ -161,4 +165,16 @@ func MakeSet(figs []*Figure) ([]*Figure, error) {
 	}
 
 	return set, nil
+}
+
+func (figs Figures) Len() int {
+	return len(figs)
+}
+
+func (figs Figures) Less(i, j int) bool {
+	return figs[i].Width*figs[i].Height < figs[j].Width*figs[j].Height
+}
+
+func (figs Figures) Swap(i, j int) {
+	figs[i], figs[j] = figs[j], figs[i]
 }
