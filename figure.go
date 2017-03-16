@@ -37,7 +37,7 @@ func pointNew(x float64, y float64) Point {
 }
 
 //Copy creates a copy of current figure
-func (fig *Figure) Copy() *Figure {
+func (fig *Figure) copy() *Figure {
 	figCopy := new(Figure)
 
 	figCopy.ID = fig.ID
@@ -93,10 +93,7 @@ func (fig *Figure) calcWH() {
 }
 
 func (fig *Figure) calcMassCenter() error {
-	rastr, err := fig.FigToRastr(RastrTypeSimple, 0, 0)
-	if err != nil {
-		return err
-	}
+	rastr := fig.figToRastr(RastrTypeSimple, 0, 0)
 	xsum := 0.0
 	ysum := 0.0
 	for i := 0; i < len(rastr.OuterContour); i++ {
@@ -160,7 +157,7 @@ func MakeSet(figs Figures) (Figures, error) {
 	set := make(Figures, 0)
 	for i := 0; i < len(figs); i++ {
 		for j := 0; j < figs[i].Quant; j++ {
-			set = append(set, figs[i].Copy())
+			set = append(set, figs[i].copy())
 		}
 	}
 

@@ -1,9 +1,6 @@
 package gonest
 
-import (
-	"errors"
-	"math"
-)
+import "math"
 
 const (
 	empty = iota
@@ -304,14 +301,7 @@ func makeBound(rastr *Rastr, bound int) *Rastr {
 	return rastr2
 }
 
-//FigToRastr is transfotmation form continious figure to discrete rastr
-func (fig *Figure) FigToRastr(rt RastrType, resize int, bound int) (*Rastr, error) {
-	if fig.Width < 0 {
-		return nil, errors.New("Negative width")
-	} else if fig.Height < 0 {
-		return nil, errors.New("Negative height")
-	}
-
+func (fig *Figure) figToRastr(rt RastrType, resize int, bound int) *Rastr {
 	rastr := new(Rastr)
 
 	rastr.Width = int(fig.Width) + 1
@@ -392,5 +382,5 @@ func (fig *Figure) FigToRastr(rt RastrType, resize int, bound int) (*Rastr, erro
 		rastr.floodRastrSimple()
 	}
 
-	return rastr, nil
+	return rastr
 }
