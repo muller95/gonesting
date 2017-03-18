@@ -1,10 +1,7 @@
 //Package gonest is for solving cutting and packing optimization tasks
 package gonest
 
-import (
-	"errors"
-	"math"
-)
+import "errors"
 
 //Point is basic type points of primitives
 type Point struct {
@@ -29,7 +26,7 @@ type Figure struct {
 type Figures []*Figure
 
 //PointNew is point constructor func
-func pointNew(x float64, y float64) Point {
+func PointNew(x float64, y float64) Point {
 	var p Point
 	p.X = x
 	p.Y = y
@@ -45,6 +42,7 @@ func (fig *Figure) copy() *Figure {
 	figCopy.Width = fig.Width
 	figCopy.Height = fig.Height
 	figCopy.MassCenter = fig.MassCenter
+	figCopy.AngleStep = fig.AngleStep
 
 	figCopy.Matrix = make([][]float64, 3)
 	for i := 0; i < 3; i++ {
@@ -73,27 +71,8 @@ func primitiveNew(points []Point) Primitive {
 	return prim
 }
 
-func (fig *Figure) calcWH() {
-	maxX := fig.Primitives[0].Points[0].X
-	minX := maxX
-	maxY := fig.Primitives[0].Points[0].Y
-	minY := maxX
-
-	for i := 0; i < len(fig.Primitives); i++ {
-		for j := 0; j < len(fig.Primitives[i].Points); j++ {
-			maxX = math.Max(fig.Primitives[i].Points[j].X, maxX)
-			maxY = math.Max(fig.Primitives[i].Points[j].X, maxY)
-			minX = math.Min(fig.Primitives[i].Points[j].X, minX)
-			minY = math.Min(fig.Primitives[i].Points[j].X, minY)
-		}
-	}
-
-	fig.Width = maxX - minX
-	fig.Height = maxY - minY
-}
-
 func (fig *Figure) calcMassCenter() error {
-	rastr := fig.figToRastr(RastrTypeSimple, 0, 0)
+	rastr := fig.figToRastr(RastrTypeSimple, 1, 0)
 	xsum := 0.0
 	ysum := 0.0
 	for i := 0; i < len(rastr.OuterContour); i++ {
@@ -101,7 +80,7 @@ func (fig *Figure) calcMassCenter() error {
 		ysum += float64(rastr.OuterContour[i].Y)
 	}
 
-	fig.MassCenter = pointNew(xsum/float64(len(rastr.OuterContour)),
+	fig.MassCenter = PointNew(xsum/float64(len(rastr.OuterContour)),
 		ysum/float64(len(rastr.OuterContour)))
 
 	return nil
@@ -114,16 +93,16 @@ func FigureNew(id int, quant int, angleStep float64, points [][]Point) (*Figure,
 	}
 
 	if quant <= 0 {
-		return nil, errors.New("Illegal quant")
+		return nil, errors.New("Negative or zero quant")
 	} else if angleStep < 0.0 {
-		return nil, errors.New("Illegal angleStep")
+		return nil, errors.New("Negative or zero angleStep")
 	} else if len(points) == 0 {
-		return nil, errors.New("Illegal points")
+		return nil, errors.New("Zero len points")
 	}
 
 	for i := 0; i < len(points); i++ {
 		if len(points[i]) == 0 {
-			return nil, errors.New("Illegal points")
+			return nil, errors.New("Zero len []points")
 		}
 	}
 
@@ -142,9 +121,8 @@ func FigureNew(id int, quant int, angleStep float64, points [][]Point) (*Figure,
 		fig.Primitives[i] = primitiveNew(points[i])
 	}
 
-	fig.calcWH()
+	fig.MoveToZero()
 	fig.calcMassCenter()
-
 	return fig, nil
 }
 

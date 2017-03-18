@@ -1,10 +1,8 @@
 package gonest
 
-import (
-	"math"
-)
+import "math"
 
-func checkPositionHeight(fig *Figure, posits []Position, npos int, xpos float64, ypos float64,
+func checkPositionHeight(fig *Figure, posits *[]Position, xpos float64, ypos float64,
 	width float64, height float64, placed *bool) bool {
 
 	res := false
@@ -12,19 +10,26 @@ func checkPositionHeight(fig *Figure, posits []Position, npos int, xpos float64,
 	currHeight := fig.Height + ypos
 	currWidth := fig.Height + xpos
 
-	if currHeight >= height || currWidth >= currWidth {
+	// fmt.Printf("currh=%f h=%f currw=%f w=%f\n", currHeight, height, currWidth, width)
+	if currHeight >= height || currWidth >= width {
 		return res
 	}
 
+	// fmt.Println("try place", *placed)
 	if !(*placed) {
-		posits[npos].Fig = fig.copy()
-		posits[npos].X, posits[npos].Y = xpos, ypos
+		var pos Position
+		*posits = append(*posits, pos)
+		lastPos := len(*posits) - 1
+		(*posits)[lastPos].Fig = fig.copy()
+		(*posits)[lastPos].X, (*posits)[lastPos].Y = xpos, ypos
 		*placed = true
 		res = true
+		// fmt.Println("PLACED")
 	} else {
-		prevHeight := posits[npos].Y + posits[npos].Fig.Height
-		prevWidth := posits[npos].X + posits[npos].Fig.Width
-		prevMassCenterY := posits[npos].Y + posits[npos].Fig.MassCenter.Y
+		lastPos := len(*posits) - 1
+		prevHeight := (*posits)[lastPos].Y + (*posits)[lastPos].Fig.Height
+		prevWidth := (*posits)[lastPos].X + (*posits)[lastPos].Fig.Width
+		prevMassCenterY := (*posits)[lastPos].Y + (*posits)[lastPos].Fig.MassCenter.Y
 		currMassCenterY := ypos + fig.MassCenter.Y
 
 		exprMain := currHeight < prevHeight
@@ -35,11 +40,25 @@ func checkPositionHeight(fig *Figure, posits []Position, npos int, xpos float64,
 			math.Abs(currMassCenterY-prevMassCenterY) < dblEpsilon &&
 			currWidth < prevWidth
 		if exprMain {
-			posits[npos].Fig = fig.copy()
-			posits[npos].X, posits[npos].Y = xpos, ypos
+			(*posits)[lastPos].Fig = fig.copy()
+			(*posits)[lastPos].X, (*posits)[lastPos].Y = xpos, ypos
 			res = true
 		}
 	}
+
+	/*for (k = 0, curr = head; curr != NULL; curr = curr->next, k++) {
+		bzero(name, 255);
+		sprintf(name, "/home/vadim/SvgFiles/place%d", k);
+		tmp = fopen(name, "w+");
+
+		for (i = 0; i < height / resize; i++) {
+			for (j = 0; j < width / resize; j++)
+				fprintf(tmp, "%d", curr->place[i][j]);
+			fprintf(tmp, "\n");
+		}
+
+		fclose(tmp);
+	}*/
 
 	return res
 }

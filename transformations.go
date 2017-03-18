@@ -17,12 +17,17 @@ func (fig *Figure) multMatrixes(matrix [][]float64) {
 }
 
 func (fig *Figure) transform(matrix [][]float64) {
+	// fmt.Println(fig.Primitives[0].Points)
+	// fmt.Println("matrix ", matrix)
 	for i := 0; i < len(fig.Primitives); i++ {
 		for j := 0; j < len(fig.Primitives[i].Points); j++ {
 			pt := fig.Primitives[i].Points[j]
-			x := fig.Matrix[0][0]*pt.X + fig.Matrix[0][1]*pt.Y + fig.Matrix[0][2]
-			y := fig.Matrix[1][0]*pt.X + fig.Matrix[1][1]*pt.Y + fig.Matrix[1][2]
-			fig.Primitives[i].Points[j] = pointNew(x, y)
+			x := matrix[0][0]*pt.X + matrix[0][1]*pt.Y + matrix[0][2]
+			y := matrix[1][0]*pt.X + matrix[1][1]*pt.Y + matrix[1][2]
+			// fmt.Printf("x=%f y=%f\n", x, y)
+			fig.Primitives[i].Points[j] = PointNew(x, y)
+			// fmt.Println(fig.Primitives[0].Points)
+			// log.Fatal("")
 		}
 	}
 
@@ -39,6 +44,7 @@ func (fig *Figure) Translate(a float64, b float64) {
 
 	matrix[0][2] = a
 	matrix[1][2] = b
+	// fmt.Println(matrix)
 	fig.transform(matrix)
 	fig.MassCenter.X += a
 	fig.MassCenter.Y += b
@@ -46,17 +52,26 @@ func (fig *Figure) Translate(a float64, b float64) {
 
 //MoveToZero translates figure to the origin of coordinates
 func (fig *Figure) MoveToZero() {
-	a := fig.Primitives[0].Points[0].X
-	b := fig.Primitives[0].Points[0].Y
+	maxX := fig.Primitives[0].Points[0].X
+	minX := maxX
+	maxY := fig.Primitives[0].Points[0].Y
+	minY := maxX
 
 	for i := 0; i < len(fig.Primitives); i++ {
 		for j := 0; j < len(fig.Primitives[i].Points); j++ {
-			a = math.Min(fig.Primitives[i].Points[j].X, a)
-			b = math.Min(fig.Primitives[i].Points[j].X, b)
+			maxX = math.Max(fig.Primitives[i].Points[j].X, maxX)
+			maxY = math.Max(fig.Primitives[i].Points[j].Y, maxY)
+			minX = math.Min(fig.Primitives[i].Points[j].X, minX)
+			minY = math.Min(fig.Primitives[i].Points[j].Y, minY)
 		}
 	}
 
-	fig.Translate(-a, -b)
+	fig.Width = maxX - minX
+	fig.Height = maxY - minY
+
+	// fmt.Printf("minx=%f miny=%f maxx=%f maxy=%f\n", minX, minY, maxX, maxY)
+
+	fig.Translate(-minX, -minY)
 }
 
 //Rotate func rotates fig on passed angle
@@ -74,5 +89,5 @@ func (fig *Figure) Rotate(angle float64) {
 	matrix[2][2] = 1
 
 	fig.transform(matrix)
-
+	fig.MoveToZero()
 }

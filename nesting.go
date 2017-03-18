@@ -2,12 +2,12 @@ package gonest
 
 import (
 	"errors"
+	"fmt"
+	"log"
+	"os"
 )
 
 //Place struct representrs a rastr Matrix of nesting material
-type place struct {
-	Matrix [][]int
-}
 
 //Position represents postion in nesting
 type Position struct {
@@ -27,24 +27,26 @@ const (
 //NestAttributes is algorithm setup structure
 type NestAttributes struct {
 	Width, Height, Bound, Resize int
-	RastrType                    Rastr
+	RastrType                    RastrType
 	PlacementMode                PlacementMode
 }
 
 var rt RastrType
 
-func placeFigHeight(fig *Figure, posits []Position, npos, width, height, resize, bound int,
-	place *place) bool {
+func placeFigHeight(fig *Figure, posits *[]Position, width, height, resize, bound int,
+	place [][]int) bool {
 	placed := false
-	for angle := 0.0; angle < 360.0; angle += fig.AngleStep {
-		currFig := fig.copy()
+	// fmt.Println("start placing")
 
+	for angle := 0.0; angle < 360.0; angle += fig.AngleStep {
+
+		currFig := fig.copy()
+		// fmt.Printf("angle=%f figastep=%f currfigastep=%f\n", angle, fig.AngleStep, currFig.AngleStep)
 		currFig.Rotate(angle)
 		rastr := currFig.figToRastr(rt, resize, bound)
 		if rastr.Width > width/resize || rastr.Height > height/resize {
 			return false
 		}
-
 		for y := 0; y < height-rastr.Height; y++ {
 			for x := 0; x < width-rastr.Width; x++ {
 				cross := false
@@ -52,7 +54,7 @@ func placeFigHeight(fig *Figure, posits []Position, npos, width, height, resize,
 				for k := 0; k < len(rastr.OuterContour); k++ {
 					i, j := rastr.OuterContour[k].Y, rastr.OuterContour[k].X
 
-					if place.Matrix[y+i][x+j] > 0 {
+					if place[y+i][x+j] > 0 {
 						cross = true
 						break
 					}
@@ -61,77 +63,109 @@ func placeFigHeight(fig *Figure, posits []Position, npos, width, height, resize,
 				if cross {
 					continue
 				}
-
-				if checkPositionHeight(fig, posits, npos, float64(x*resize), float64(y*resize),
+				// fmt.Println("Check pos")
+				if checkPositionHeight(currFig, posits, float64(x*resize), float64(y*resize),
 					float64(width), float64(height), &placed) {
-					posits[npos].Angle = angle
+					(*posits)[len(*posits)-1].Angle = angle
+					// fmt.Println("true check")
 				}
+
+				// fmt.Printf("x=%d y=%d\n", x, y)
 
 				x = width
 				y = height
 			}
 		}
+
+		// fmt.Println("End angle")
 	}
 
 	if !placed {
+		// fmt.Println("end placing false")
 		return false
 	}
+	// fmt.Println("end placing")
 
-	rastr := posits[npos].Fig.figToRastr(rt, resize, bound)
+	rastr := (*posits)[len(*posits)-1].Fig.figToRastr(rt, resize, bound)
 	for i := 0; i < rastr.Height; i++ {
 		for j := 0; j < rastr.Width; j++ {
-			x := int(posits[npos].X) / resize
-			y := int(posits[npos].Y) / resize
-			place.Matrix[i+y][j+x] += rastr.RastrMatrix[i][j]
+			x := int((*posits)[len(*posits)-1].X) / resize
+			y := int((*posits)[len(*posits)-1].Y) / resize
+			place[i+y][j+x] += rastr.RastrMatrix[i][j]
 		}
 	}
 
 	return true
 }
 
-func appendPlace(places []place, width, height, resize int) {
-	var place place
-	place.Matrix = make([][]int, height/resize)
-	for i := 0; i < height/resize; i++ {
-		place.Matrix[i] = make([]int, width/resize)
-	}
-	places = append(places, place)
-}
-
-func RastrNest(figSet []*Figure, indiv *Individual, attrs *NestAttributes) error {
+//RastrNest represents algorithm main function
+func RastrNest(figSet []*Figure, indiv *Individual, attrs NestAttributes) error {
 	if attrs.Width <= 0 {
 		return errors.New("Negative or zero width")
 	} else if attrs.Height <= 0 {
 		return errors.New("Negative or zero height")
 	} else if attrs.Resize <= 0 {
 		return errors.New("Negative or zero width")
-	} else if attrs.Bound <= 0 {
-		return errors.New("Negative or zero bound")
+	} else if attrs.Bound < 0 {
+		return errors.New("Negative bound")
 	}
 
-	mask := make([]int, len(figSet))
-	posits := make([]Position, len(figSet))
-	places := make([]place, 0)
-	appendPlace(places, attrs.Width, attrs.Height, attrs.Resize)
+	if attrs.Bound < 3 {
+		attrs.Bound = 3
+	}
+
+	if attrs.Resize < 1 {
+		attrs.Resize = 1
+	}
+
+	posits := make([]Position, 0)
+	place := make([][]int, attrs.Height/attrs.Resize)
+	for i := 0; i < attrs.Height/attrs.Resize; i++ {
+		place[i] = make([]int, attrs.Width/attrs.Resize)
+	}
+
 	if len(indiv.Genom) == 0 {
 		indiv.Genom = make([]int, 0)
 	}
 
-	npos := 0
+	mask := make([]int, len(figSet))
+	for i := 0; i < len(indiv.Genom); i++ {
+		fig := figSet[i]
+		fmt.Println("i=", i)
+		if placeFigHeight(fig, &posits, attrs.Width, attrs.Height, attrs.Resize,
+			attrs.Bound, place) {
+			posits[len(posits)-1].Fig.Translate(posits[len(posits)-1].X, posits[len(posits)-1].Y)
+			mask[i] = 1
+		}
+	}
+
+	if len(posits) < len(indiv.Genom) {
+		indiv.Bad = true
+	}
+
 	for i := 0; i < len(figSet); i++ {
 		if mask[i] > 0 {
 			continue
 		}
-
 		fig := figSet[i]
-		for j := 0; j < len(places); j++ {
-			if placeFigHeight(fig, posits, npos, attrs.Width, attrs.Height, attrs.Resize,
-				attrs.Bound, &places[j]) {
-				posits[npos].Fig.Translate(posits[npos].X, posits[npos].Y)
-				npos++
-			}
-			mask[i] = 1
+		fmt.Println("i=", i)
+		if placeFigHeight(fig, &posits, attrs.Width, attrs.Height, attrs.Resize,
+			attrs.Bound, place) {
+			posits[len(posits)-1].Fig.Translate(posits[len(posits)-1].X, posits[len(posits)-1].Y)
+			indiv.Genom = append(indiv.Genom, i)
 		}
 	}
+
+	file, err := os.Create("/home/vadim/SvgFiles/place")
+	if err != nil {
+		log.Fatal("Error! ", err)
+	}
+	for i := 0; i < len(place); i++ {
+		for j := 0; j < len(place[i]); j++ {
+			file.WriteString(fmt.Sprintf("%d", place[i][j]))
+		}
+		file.WriteString("\n")
+	}
+
 	return nil
 }

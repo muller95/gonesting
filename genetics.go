@@ -10,6 +10,7 @@ type Individual struct {
 	Fitness   float64
 	Genom     []int
 	Positions []Position
+	Bad       bool
 }
 
 //Individuals represents a slice of *Individual
