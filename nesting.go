@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"os"
 )
 
@@ -19,17 +20,10 @@ type PlacementMode uint8
 
 const (
 	//PlacementModeHeight is constant for simple height mode
-	PlacementModeHeight = iota
+	PlacementModeHeight PlacementMode = iota
 	//PlacementModeScale is constant for more complex scale mode
 	PlacementModeScale
 )
-
-//NestAttributes is algorithm setup structure
-type NestAttributes struct {
-	Width, Height, Bound, Resize int
-	RastrType                    RastrType
-	PlacementMode                PlacementMode
-}
 
 var rt RastrType
 
@@ -99,29 +93,30 @@ func placeFigHeight(fig *Figure, posits *[]Position, width, height, resize, boun
 }
 
 //RastrNest represents algorithm main function
-func RastrNest(figSet []*Figure, indiv *Individual, attrs NestAttributes) error {
-	if attrs.Width <= 0 {
+func RastrNest(figSet []*Figure, indiv *Individual, width, height, bound, resize int,
+	rastrType RastrType, placementMode PlacementMode) error {
+	if width <= 0 {
 		return errors.New("Negative or zero width")
-	} else if attrs.Height <= 0 {
+	} else if height <= 0 {
 		return errors.New("Negative or zero height")
-	} else if attrs.Resize <= 0 {
+	} else if resize <= 0 {
 		return errors.New("Negative or zero width")
-	} else if attrs.Bound < 0 {
+	} else if bound < 0 {
 		return errors.New("Negative bound")
 	}
 
-	if attrs.Bound < 3 {
-		attrs.Bound = 3
+	if bound < 3 {
+		bound = 3
 	}
 
-	if attrs.Resize < 1 {
-		attrs.Resize = 1
+	if resize < 1 {
+		resize = 1
 	}
 
 	posits := make([]Position, 0)
-	place := make([][]int, attrs.Height/attrs.Resize)
-	for i := 0; i < attrs.Height/attrs.Resize; i++ {
-		place[i] = make([]int, attrs.Width/attrs.Resize)
+	place := make([][]int, height/resize)
+	for i := 0; i < height/resize; i++ {
+		place[i] = make([]int, width/resize)
 	}
 
 	if len(indiv.Genom) == 0 {
@@ -129,13 +124,20 @@ func RastrNest(figSet []*Figure, indiv *Individual, attrs NestAttributes) error 
 	}
 
 	mask := make([]int, len(figSet))
+	failNest := make(map[int]bool)
 	for i := 0; i < len(indiv.Genom); i++ {
 		fig := figSet[i]
-		fmt.Println("i=", i)
-		if placeFigHeight(fig, &posits, attrs.Width, attrs.Height, attrs.Resize,
-			attrs.Bound, place) {
+		if failNest[fig.ID] {
+			continue
+		}
+		// fmt.Println("i=", i)
+		if placeFigHeight(fig, &posits, width, height, resize,
+			bound, place) {
 			posits[len(posits)-1].Fig.Translate(posits[len(posits)-1].X, posits[len(posits)-1].Y)
 			mask[i] = 1
+		} else {
+			// fmt.Println("Fail nest")
+			failNest[fig.ID] = true
 		}
 	}
 
@@ -144,15 +146,18 @@ func RastrNest(figSet []*Figure, indiv *Individual, attrs NestAttributes) error 
 	}
 
 	for i := 0; i < len(figSet); i++ {
-		if mask[i] > 0 {
+		fig := figSet[i]
+		if mask[i] > 0 || failNest[fig.ID] {
 			continue
 		}
-		fig := figSet[i]
-		fmt.Println("i=", i)
-		if placeFigHeight(fig, &posits, attrs.Width, attrs.Height, attrs.Resize,
-			attrs.Bound, place) {
+		// fmt.Println("i=", i)
+		if placeFigHeight(fig, &posits, width, height, resize,
+			bound, place) {
 			posits[len(posits)-1].Fig.Translate(posits[len(posits)-1].X, posits[len(posits)-1].Y)
 			indiv.Genom = append(indiv.Genom, i)
+		} else {
+			// fmt.Println("Fail nest")
+			failNest[fig.ID] = true
 		}
 	}
 
@@ -167,5 +172,12 @@ func RastrNest(figSet []*Figure, indiv *Individual, attrs NestAttributes) error 
 		file.WriteString("\n")
 	}
 
+	indiv.Positions = posits
+	maxHeight := 0.0
+	for i := 0; i < len(posits); i++ {
+		currHeight := posits[i].X + posits[i].Fig.Height
+		maxHeight = math.Max(currHeight, maxHeight)
+	}
+	indiv.Height = maxHeight
 	return nil
 }

@@ -26,7 +26,7 @@ type RastrType uint8
 
 const (
 	//RastrTypeSimple is basic rastr with 100% flood fill
-	RastrTypeSimple = iota
+	RastrTypeSimple RastrType = iota
 	//RastrTypePartInPart is more complex than simple, it finds holes in figure
 	RastrTypePartInPart
 )

@@ -7,7 +7,7 @@ import (
 
 //Individual represents basic structure with genom for genetic algorighm
 type Individual struct {
-	Fitness   float64
+	Height    float64
 	Genom     []int
 	Positions []Position
 	Bad       bool
@@ -21,7 +21,8 @@ func (indivs Individuals) Len() int {
 }
 
 func (indivs Individuals) Less(i, j int) bool {
-	return indivs[i].Fitness < indivs[j].Fitness
+	return (len(indivs[i].Genom) < len(indivs[j].Genom)) ||
+		(len(indivs[i].Genom) == len(indivs[j].Genom) && indivs[i].Height > indivs[j].Height)
 }
 
 func (indivs Individuals) Swap(i, j int) {
@@ -82,4 +83,21 @@ func Crossover(parent1, parent2 *Individual) (*Individual, error) {
 	}
 
 	return child, nil
+}
+
+//IndividualsEqual checks if two individuals have equal genoms in given set of figures
+func IndividualsEqual(indiv1, indiv2 *Individual, figSet Figures) bool {
+	if len(indiv1.Genom) != len(indiv2.Genom) {
+		return false
+	}
+
+	for i := 0; i < len(indiv1.Genom); i++ {
+		figNum1 := indiv1.Genom[i]
+		figNum2 := indiv2.Genom[i]
+		if figSet[figNum1].ID != figSet[figNum2].ID {
+			return false
+		}
+	}
+
+	return true
 }
