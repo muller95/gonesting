@@ -10,7 +10,6 @@ type Individual struct {
 	Height    float64
 	Genom     []int
 	Positions []Position
-	Bad       bool
 }
 
 //Individuals represents a slice of *Individual
@@ -21,8 +20,8 @@ func (indivs Individuals) Len() int {
 }
 
 func (indivs Individuals) Less(i, j int) bool {
-	return (len(indivs[i].Genom) < len(indivs[j].Genom)) ||
-		(len(indivs[i].Genom) == len(indivs[j].Genom) && indivs[i].Height > indivs[j].Height)
+	return (len(indivs[i].Genom) > len(indivs[j].Genom)) ||
+		(len(indivs[i].Genom) == len(indivs[j].Genom) && indivs[i].Height < indivs[j].Height)
 }
 
 func (indivs Individuals) Swap(i, j int) {
@@ -30,7 +29,7 @@ func (indivs Individuals) Swap(i, j int) {
 }
 
 //Mutate does a mutation of genom
-func Mutate(indiv *Individual) (*Individual, error) {
+func (indiv *Individual) Mutate() (*Individual, error) {
 	if len(indiv.Genom) < 2 {
 		return nil, errors.New("Too short genom")
 	}

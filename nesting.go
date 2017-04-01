@@ -126,11 +126,12 @@ func RastrNest(figSet []*Figure, indiv *Individual, width, height, bound, resize
 	mask := make([]int, len(figSet))
 	failNest := make(map[int]bool)
 	for i := 0; i < len(indiv.Genom); i++ {
-		fig := figSet[i]
+		figNum := indiv.Genom[i]
+		fig := figSet[figNum]
 		if failNest[fig.ID] {
 			continue
 		}
-		// fmt.Println("i=", i)
+		fmt.Println("i=", i)
 		if placeFigHeight(fig, &posits, width, height, resize,
 			bound, place) {
 			posits[len(posits)-1].Fig.Translate(posits[len(posits)-1].X, posits[len(posits)-1].Y)
@@ -142,7 +143,8 @@ func RastrNest(figSet []*Figure, indiv *Individual, width, height, bound, resize
 	}
 
 	if len(posits) < len(indiv.Genom) {
-		indiv.Bad = true
+		indiv.Height = math.Inf(1)
+		return nil
 	}
 
 	for i := 0; i < len(figSet); i++ {
@@ -150,7 +152,7 @@ func RastrNest(figSet []*Figure, indiv *Individual, width, height, bound, resize
 		if mask[i] > 0 || failNest[fig.ID] {
 			continue
 		}
-		// fmt.Println("i=", i)
+		fmt.Println("i=", i)
 		if placeFigHeight(fig, &posits, width, height, resize,
 			bound, place) {
 			posits[len(posits)-1].Fig.Translate(posits[len(posits)-1].X, posits[len(posits)-1].Y)

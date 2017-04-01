@@ -11,6 +11,8 @@ import (
 
 	"sync"
 
+	"math"
+
 	gonest "github.com/muller95/gonesting"
 )
 
@@ -25,12 +27,28 @@ const (
 )
 
 const (
-	maxIterations = 10
-	maxThreads    = 30
+	maxIterations  = 10
+	maxThreads     = 5
+	maxMutateTries = 10000
 )
 
-func nestRoutine(indiv *gonest.Individual, wg *sync.WaitGroup) {
+var resize = 1
+var bound = 0
+var width = 1000
+var height = 1000
+var rastrType = gonest.RastrTypePartInPart
+var placementMode = gonest.PlacementModeHeight
+var figSet []*gonest.Figure
 
+func nestRoutine(indiv *gonest.Individual, wg *sync.WaitGroup) {
+	defer wg.Done()
+	fmt.Println("START")
+	err := gonest.RastrNest(figSet, indiv, width, height, bound, resize, rastrType,
+		placementMode)
+	if err != nil {
+		log.Println(err)
+	}
+	fmt.Println("END")
 }
 
 func main() {
@@ -38,6 +56,7 @@ func main() {
 	var angleStep float64
 	var points [][]gonest.Point
 	var tmpPoints []gonest.Point
+	var err error
 	// var currPoints int
 	reader := bufio.NewReader(os.Stdin)
 
@@ -107,17 +126,10 @@ func main() {
 	}
 
 	sort.Sort(gonest.Figures(figs))
-	figSet, err := gonest.MakeSet(figs)
+	figSet, err = gonest.MakeSet(figs)
 	if err != nil {
 		log.Fatal("Error on making set: ", err)
 	}
-
-	resize := 1
-	bound := 0
-	width := 1000
-	height := 1000
-	rastrType := gonest.RastrTypePartInPart
-	placementMode := gonest.PlacementModeHeight
 
 	for len(figSet) > 0 {
 		indivs := make([]*gonest.Individual, 1)
@@ -129,28 +141,29 @@ func main() {
 		}
 
 		for i := 0; i < maxIterations; i++ {
-			fmt.Printf("")
+			fmt.Println("ITERATION ", i)
 			for j := 0; j < len(indivs); j++ {
-				fmt.Printf("len=%v height=%v\n", len(indivs[j].Genom), indivs[j].Height)
+				fmt.Printf("len=%v height=%v genom=%v\n", len(indivs[j].Genom),
+					indivs[j].Height, indivs[j].Genom)
 			}
 
 			nmbNew := 0
 			oldLen := len(indivs)
 			wg := new(sync.WaitGroup)
-			for j := 0; j < oldLen-1 && nmbNew < maxThreads; j++ {
+			for j := 0; j < oldLen-1 && indivs[j+1].Height != math.Inf(1) &&
+				nmbNew < maxThreads; j++ {
 				var children [2]*gonest.Individual
-				if len(indivs[j].Genom) == len(indivs[j+1].Genom) {
 
-					children[0], err = gonest.Crossover(indivs[j], indivs[j+1])
-					if err != nil {
-						break
-					}
-					children[1], _ = gonest.Crossover(indivs[j+1], indivs[j])
+				children[0], err = gonest.Crossover(indivs[j], indivs[j+1])
+				if err != nil {
+					log.Println(err)
+					break
 				}
+				children[1], _ = gonest.Crossover(indivs[j+1], indivs[j])
 
 				for k := 0; k < 2; k++ {
 					equal := false
-					for m := 0; m < oldLen; m++ {
+					for m := 0; m < oldLen+nmbNew; m++ {
 						if gonest.IndividualsEqual(indivs[m], children[k], figSet) {
 							equal = true
 							break
@@ -164,69 +177,37 @@ func main() {
 						indivs = append(indivs, children[k])
 					}
 				}
+			}
 
+			for j := 0; j < maxMutateTries && nmbNew < maxThreads; j++ {
+				mutant, err := indivs[0].Mutate()
+				if err != nil {
+					break
+				}
+
+				equal := false
+				for k := 0; k < oldLen+nmbNew; k++ {
+					if gonest.IndividualsEqual(indivs[k], mutant, figSet) {
+						equal = true
+						break
+					}
+				}
+
+				if !equal {
+					nmbNew++
+					wg.Add(1)
+					go nestRoutine(mutant, wg)
+					indivs = append(indivs, mutant)
+				}
 			}
 
 			wg.Wait()
-
-			// goodLen := len(indivs[0].Genom)
-			/*
-
-
-						oldn = nindivs;
-						for (j = 0; j < oldn - 1 && nnew < INDIVS_PER_ITER; j++) {
-
-							}
-
-
-							equal = 0;
-							for (k = 0; k < 100000 && nnew == 0; k++) {
-								int res;
-								res = mutate(&indivs[0], &heirs[0], setsize);
-								if (res < 0) {
-									ext = 1;
-									break;
-								}
-								equal = 0;
-								for (j = 0; j < nindivs; j++) {
-									equal = gensequal(&heirs[0], &indivs[j]) || gensequal2(&heirs[0], &indivs[j], figset);
-									if (equal) {
-										break;
-									}
-								}
-								if (!equal) {
-									struct ThreadData *data;
-									data = (struct ThreadData*)xmalloc(sizeof(struct ThreadData));
-									data->heirnum = 0;
-									if (nthread_start(&thrds[nnew], thrdfunc, data) != 0) {
-										perror("Error creating thread\n");
-										exit(1);
-									}
-									nnew++;
-								} else {
-									destrindiv(&heirs[0]);
-								}
-							}
-
-							fprintf(stderr, "\nnnew=%d\n", nnew);
-							fflush(stderr);
-							for (j = 0; j < nnew; j++) {
-								nthread_join(&thrds[j]);
-								fprintf(stderr, "%d done\n", j);
-								fflush(stderr);
-								indivs[nindivs] = heirs[j];
-								nindivs++;
-
-								if (nindivs == maxindivs) {
-									maxindivs *= 2;
-									indivs = (struct Individ*)xrealloc(indivs, sizeof(struct Individ) * maxindivs);
-								}
-							}
-							fprintf(stderr, "\n");
-							fflush(stderr);
-			qsort(indivs, nindivs, sizeof(struct Individ), gencmp);*/
+			sort.Sort(gonest.Individuals(indivs))
 		}
 
+		err = gonest.RastrNest(figSet, indivs[0], width, height, bound, resize, rastrType,
+			placementMode)
 		break
 	}
+
 }
