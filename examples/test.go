@@ -27,7 +27,7 @@ const (
 )
 
 const (
-	maxIterations  = 10
+	maxIterations  = 3
 	maxThreads     = 5
 	maxMutateTries = 10000
 )
@@ -42,13 +42,13 @@ var figSet []*gonest.Figure
 
 func nestRoutine(indiv *gonest.Individual, wg *sync.WaitGroup) {
 	defer wg.Done()
-	fmt.Println("START")
+	// fmt.Println("START")
 	err := gonest.RastrNest(figSet, indiv, width, height, bound, resize, rastrType,
 		placementMode)
 	if err != nil {
 		log.Println(err)
 	}
-	fmt.Println("END")
+	// fmt.Println("END")
 }
 
 func main() {
@@ -112,7 +112,7 @@ func main() {
 			}
 		}
 	}
-	fmt.Println(len(figs[5].Primitives))
+	// fmt.Println(len(figs[5].Primitives))
 	// fmt.Println(figs[0].Primitives[0].Points)
 	for f := 0; f < len(figs); f++ {
 		rastr := figs[f].FigToRastr(gonest.RastrTypePartInPart, 1, 2)
@@ -141,11 +141,11 @@ func main() {
 		}
 
 		for i := 0; i < maxIterations; i++ {
-			fmt.Println("ITERATION ", i)
-			for j := 0; j < len(indivs); j++ {
-				fmt.Printf("len=%v height=%v genom=%v\n", len(indivs[j].Genom),
-					indivs[j].Height, indivs[j].Genom)
-			}
+			// fmt.Println("ITERATION ", i)
+			/*			for j := 0; j < len(indivs); j++ {
+						fmt.Printf("len=%v height=%v genom=%v\n", len(indivs[j].Genom),
+							indivs[j].Height, indivs[j].Genom)
+					}*/
 
 			nmbNew := 0
 			oldLen := len(indivs)
@@ -207,7 +207,36 @@ func main() {
 
 		err = gonest.RastrNest(figSet, indivs[0], width, height, bound, resize, rastrType,
 			placementMode)
-		break
+		// a = append(a[:i], a[i+1:]...)
+		for i := 0; i < len(indivs[0].Positions); i++ {
+			a := indivs[0].Positions[i].Fig.Matrix[0][0]
+			b := indivs[0].Positions[i].Fig.Matrix[1][0]
+			c := indivs[0].Positions[i].Fig.Matrix[0][1]
+			d := indivs[0].Positions[i].Fig.Matrix[1][1]
+			e := indivs[0].Positions[i].Fig.Matrix[0][2]
+			f := indivs[0].Positions[i].Fig.Matrix[1][2]
+
+			fmt.Printf("%d\n", indivs[0].Positions[i].Fig.ID)
+			fmt.Printf("matrix(%f, %f, %f, %f, %f, %f)\n:\n", a, b, c, d, e, f)
+		}
+		fmt.Println("-")
+		newFigSet := make([]*gonest.Figure, 0)
+		for i := 0; i < len(figSet); i++ {
+			var j int
+			found := false
+			for j = 0; j < len(indivs[0].Genom); j++ {
+				if i == indivs[0].Genom[j] {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				newFigSet = append(newFigSet, figSet[i])
+			}
+		}
+
+		figSet = newFigSet
 	}
 
 }
