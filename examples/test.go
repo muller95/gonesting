@@ -236,9 +236,9 @@ func main() {
 			f := indivs[0].Positions[i].Fig.Matrix[1][2]
 
 			fmt.Printf("%d\n", indivs[0].Positions[i].Fig.ID)
-			fmt.Printf("matrix(%f, %f, %f, %f, %f, %f)\n:\n", a, b, c, d, e, f)
+			fmt.Printf("matrix(%f, %f, %f, %f, %f, %f)\n", a, b, c, d, e, f)
 		}
-		fmt.Println("-")
+		fmt.Println(":")
 		newFigSet := make([]*gonest.Figure, 0)
 		for i := 0; i < len(figSet); i++ {
 			var j int
