@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -27,15 +28,11 @@ const (
 )
 
 const (
-	maxIterations  = 3
 	maxThreads     = 5
 	maxMutateTries = 10000
 )
 
-var resize = 1
-var bound = 0
-var width = 1000
-var height = 1000
+var width, height, bound, resize, iterations int
 var rastrType = gonest.RastrTypePartInPart
 var placementMode = gonest.PlacementModeHeight
 var figSet []*gonest.Figure
@@ -62,6 +59,53 @@ func main() {
 
 	state := stateNewFig
 	figs := make([]*gonest.Figure, 0)
+
+	widthPtr := flag.Int("w", 0, "Positive int, width of place")
+	heightPtr := flag.Int("h", 0, "Positive int, width of place")
+	resizePtr := flag.Int("r", 0, "Positive int, resize of rastr")
+	boundPtr := flag.Int("b", 0, "Positive int, additional bound thickness")
+	iterationsPtr := flag.Int("i", 0, "Positive int, number of genetic algorithm iterations")
+	scaleModePtr := flag.Bool("s", false, "Mode boolean")
+	flag.Parse()
+
+	width = *widthPtr
+	height = *heightPtr
+	resize = *resizePtr
+	bound = *boundPtr
+	iterations = *iterationsPtr
+
+	badArgs := false
+	if width <= 0 {
+		log.Println("Width must be greater than zero")
+		badArgs = true
+	}
+	if height <= 0 {
+		log.Println("Height must be greater than zero")
+		badArgs = true
+	}
+	if resize < 0 {
+		log.Println("Resize must be greate or equal to zero")
+		badArgs = true
+	}
+	if bound < 0 {
+		log.Println("Bound must be greate or equal to zero")
+		badArgs = true
+	}
+	if iterations <= 0 {
+		log.Println("iterations must be greater than zero")
+		badArgs = true
+	}
+
+	if badArgs {
+		return
+	}
+
+	if *scaleModePtr {
+		placementMode = gonest.PlacementModeScale
+	} else {
+		placementMode = gonest.PlacementModeHeight
+	}
+
 	for {
 		var x, y float64
 		str, err := reader.ReadString('\n')
@@ -73,7 +117,6 @@ func main() {
 
 		if state == stateNewFig {
 			fmt.Sscanf(str, "%d %f\n", &quant, &angleStep)
-			// fmt.Printf("quant=%d angleStep=%f\n", quant, angleStep)
 			state = statePrim
 			points = make([][]gonest.Point, 0)
 			tmpPoints = make([]gonest.Point, 0)
@@ -81,48 +124,24 @@ func main() {
 		}
 
 		if str == figSepar {
+			points = append(points, tmpPoints)
+			tmpPoints = make([]gonest.Point, 0)
 			state = stateNewFig
 			fig, err := gonest.FigureNew(len(figs), quant, angleStep, points)
 			if err != nil {
 				log.Fatal("Error on creating figure: ", err)
 			}
 			figs = append(figs, fig)
-			// fmt.Println(fig)
 		}
 
 		if str == primSepar {
 			points = append(points, tmpPoints)
 			tmpPoints = make([]gonest.Point, 0)
-			// fmt.Println(tmpPoints)
 			continue
 		}
 
 		fmt.Sscanf(str, "%f %f\n", &x, &y)
 		tmpPoints = append(tmpPoints, gonest.PointNew(x, y))
-	}
-
-	for f := 0; f < len(figs); f++ {
-		file, _ := os.Create(fmt.Sprintf("/home/vadim/SvgFiles/fig%d", f))
-		for i := 0; i < len(figs[f].Primitives); i++ {
-			for j := 0; j < len(figs[f].Primitives[i].Points)-1; j++ {
-				file.WriteString(fmt.Sprintf("%f %f\n", figs[f].Primitives[i].Points[j].X,
-					figs[f].Primitives[i].Points[j].Y))
-				file.WriteString(fmt.Sprintf("%f %f\n", figs[f].Primitives[i].Points[j+1].X,
-					figs[f].Primitives[i].Points[j+1].Y))
-			}
-		}
-	}
-	// fmt.Println(len(figs[5].Primitives))
-	// fmt.Println(figs[0].Primitives[0].Points)
-	for f := 0; f < len(figs); f++ {
-		rastr := figs[f].FigToRastr(gonest.RastrTypePartInPart, 1, 2)
-		file, _ := os.Create(fmt.Sprintf("/home/vadim/SvgFiles/rastr%d", f))
-		for i := 0; i < rastr.Height; i++ {
-			for j := 0; j < rastr.Width; j++ {
-				file.WriteString(fmt.Sprintf("%d", rastr.RastrMatrix[i][j]))
-			}
-			file.WriteString("\n")
-		}
 	}
 
 	sort.Sort(gonest.Figures(figs))
@@ -137,15 +156,15 @@ func main() {
 		err = gonest.RastrNest(figSet, indivs[0], width, height, bound, resize, rastrType,
 			placementMode)
 		if err != nil {
-			log.Fatal("Error! ", err)
+			log.Fatal("Error! RastrNest: ", err)
 		}
 
-		for i := 0; i < maxIterations; i++ {
+		for i := 0; i < iterations; i++ {
 			// fmt.Println("ITERATION ", i)
-			/*			for j := 0; j < len(indivs); j++ {
-						fmt.Printf("len=%v height=%v genom=%v\n", len(indivs[j].Genom),
-							indivs[j].Height, indivs[j].Genom)
-					}*/
+			for j := 0; j < len(indivs); j++ {
+				log.Printf("len=%v height=%v genom=%v\n", len(indivs[j].Genom),
+					indivs[j].Height, indivs[j].Genom)
+			}
 
 			nmbNew := 0
 			oldLen := len(indivs)

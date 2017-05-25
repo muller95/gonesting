@@ -99,8 +99,8 @@ func RastrNest(figSet []*Figure, indiv *Individual, width, height, bound, resize
 		return errors.New("Negative or zero width")
 	} else if height <= 0 {
 		return errors.New("Negative or zero height")
-	} else if resize <= 0 {
-		return errors.New("Negative or zero width")
+	} else if resize < 0 {
+		return errors.New("Negative resize")
 	} else if bound < 0 {
 		return errors.New("Negative bound")
 	}
