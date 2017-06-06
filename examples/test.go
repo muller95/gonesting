@@ -33,19 +33,14 @@ const (
 )
 
 var width, height, bound, resize, iterations int
-var rastrType = gonest.RastrTypePartInPart
-var placementMode = gonest.PlacementModeHeight
 var figSet []*gonest.Figure
 
 func nestRoutine(indiv *gonest.Individual, wg *sync.WaitGroup) {
 	defer wg.Done()
-	// fmt.Println("START")
-	err := gonest.RastrNest(figSet, indiv, width, height, bound, resize, rastrType,
-		placementMode)
+	err := gonest.RastrNest(figSet, indiv, width, height, bound, resize)
 	if err != nil {
 		log.Println(err)
 	}
-	// fmt.Println("END")
 }
 
 func main() {
@@ -54,7 +49,7 @@ func main() {
 	var points [][]gonest.Point
 	var tmpPoints []gonest.Point
 	var err error
-	// var currPoints int
+
 	reader := bufio.NewReader(os.Stdin)
 
 	state := stateNewFig
@@ -65,7 +60,6 @@ func main() {
 	resizePtr := flag.Int("r", 0, "Positive int, resize of rastr")
 	boundPtr := flag.Int("b", 0, "Positive int, additional bound thickness")
 	iterationsPtr := flag.Int("i", 0, "Positive int, number of genetic algorithm iterations")
-	scaleModePtr := flag.Bool("s", false, "Mode boolean")
 	flag.Parse()
 
 	width = *widthPtr
@@ -98,12 +92,6 @@ func main() {
 
 	if badArgs {
 		return
-	}
-
-	if *scaleModePtr {
-		placementMode = gonest.PlacementModeScale
-	} else {
-		placementMode = gonest.PlacementModeHeight
 	}
 
 	for {
@@ -153,18 +141,17 @@ func main() {
 	for len(figSet) > 0 {
 		indivs := make([]*gonest.Individual, 1)
 		indivs[0] = new(gonest.Individual)
-		err = gonest.RastrNest(figSet, indivs[0], width, height, bound, resize, rastrType,
-			placementMode)
+		err = gonest.RastrNest(figSet, indivs[0], width, height, bound, resize)
 		if err != nil {
 			log.Fatal("Error! RastrNest: ", err)
 		}
 
+		log.Printf("@START h=%v n=%v\n", indivs[0].Height, len(indivs[0].Genom))
 		for i := 0; i < iterations; i++ {
-			// fmt.Println("ITERATION ", i)
-			for j := 0; j < len(indivs); j++ {
+			/*for j := 0; j < len(indivs); j++ {
 				log.Printf("len=%v height=%v genom=%v\n", len(indivs[j].Genom),
 					indivs[j].Height, indivs[j].Genom)
-			}
+			}*/
 
 			nmbNew := 0
 			oldLen := len(indivs)
@@ -224,9 +211,9 @@ func main() {
 			sort.Sort(gonest.Individuals(indivs))
 		}
 
-		err = gonest.RastrNest(figSet, indivs[0], width, height, bound, resize, rastrType,
-			placementMode)
-		// a = append(a[:i], a[i+1:]...)
+		err = gonest.RastrNest(figSet, indivs[0], width, height, bound, resize)
+		log.Printf("@END h=%v n=%v\n", indivs[0].Height, len(indivs[0].Genom))
+
 		for i := 0; i < len(indivs[0].Positions); i++ {
 			a := indivs[0].Positions[i].Fig.Matrix[0][0]
 			b := indivs[0].Positions[i].Fig.Matrix[1][0]

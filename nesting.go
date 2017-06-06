@@ -8,36 +8,20 @@ import (
 	"os"
 )
 
-//Place struct representrs a rastr Matrix of nesting material
-
 //Position represents postion in nesting
 type Position struct {
 	Fig         *Figure
 	Angle, X, Y float64
 }
 
-type PlacementMode uint8
-
-const (
-	//PlacementModeHeight is constant for simple height mode
-	PlacementModeHeight PlacementMode = iota
-	//PlacementModeScale is constant for more complex scale mode
-	PlacementModeScale
-)
-
-var rt RastrType
-
 func placeFigHeight(fig *Figure, posits *[]Position, width, height, resize, bound int,
 	place [][]int) bool {
 	placed := false
-	// fmt.Println("start placing")
 
 	for angle := 0.0; angle < 360.0; angle += fig.AngleStep {
-
 		currFig := fig.copy()
-		// fmt.Printf("angle=%f figastep=%f currfigastep=%f\n", angle, fig.AngleStep, currFig.AngleStep)
 		currFig.Rotate(angle)
-		rastr := currFig.figToRastr(rt, resize, bound)
+		rastr := currFig.figToRastr(resize, bound)
 		if rastr.Width > width/resize || rastr.Height > height/resize {
 			return false
 		}
@@ -57,30 +41,23 @@ func placeFigHeight(fig *Figure, posits *[]Position, width, height, resize, boun
 				if cross {
 					continue
 				}
-				// fmt.Println("Check pos")
+
 				if checkPositionHeight(currFig, posits, float64(x*resize), float64(y*resize),
 					float64(width), float64(height), &placed) {
 					(*posits)[len(*posits)-1].Angle = angle
-					// fmt.Println("true check")
 				}
-
-				// fmt.Printf("x=%d y=%d\n", x, y)
 
 				x = width
 				y = height
 			}
 		}
-
-		// fmt.Println("End angle")
 	}
 
 	if !placed {
-		// fmt.Println("end placing false")
 		return false
 	}
-	// fmt.Println("end placing")
 
-	rastr := (*posits)[len(*posits)-1].Fig.figToRastr(rt, resize, bound)
+	rastr := (*posits)[len(*posits)-1].Fig.figToRastr(resize, bound)
 	for i := 0; i < rastr.Height; i++ {
 		for j := 0; j < rastr.Width; j++ {
 			x := int((*posits)[len(*posits)-1].X) / resize
@@ -93,8 +70,7 @@ func placeFigHeight(fig *Figure, posits *[]Position, width, height, resize, boun
 }
 
 //RastrNest represents algorithm main function
-func RastrNest(figSet []*Figure, indiv *Individual, width, height, bound, resize int,
-	rastrType RastrType, placementMode PlacementMode) error {
+func RastrNest(figSet []*Figure, indiv *Individual, width, height, bound, resize int) error {
 	if width <= 0 {
 		return errors.New("Negative or zero width")
 	} else if height <= 0 {
@@ -105,9 +81,9 @@ func RastrNest(figSet []*Figure, indiv *Individual, width, height, bound, resize
 		return errors.New("Negative bound")
 	}
 
-	if bound < 3 {
+	/*	if bound < 3 {
 		bound = 3
-	}
+	}*/
 
 	if resize < 1 {
 		resize = 1
@@ -136,7 +112,6 @@ func RastrNest(figSet []*Figure, indiv *Individual, width, height, bound, resize
 			posits[len(posits)-1].Fig.Translate(posits[len(posits)-1].X, posits[len(posits)-1].Y)
 			mask[i] = 1
 		} else {
-			// fmt.Println("Fail nest")
 			failNest[fig.ID] = true
 		}
 	}
@@ -156,7 +131,6 @@ func RastrNest(figSet []*Figure, indiv *Individual, width, height, bound, resize
 			posits[len(posits)-1].Fig.Translate(posits[len(posits)-1].X, posits[len(posits)-1].Y)
 			indiv.Genom = append(indiv.Genom, i)
 		} else {
-			// fmt.Println("Fail nest")
 			failNest[fig.ID] = true
 		}
 	}

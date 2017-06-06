@@ -72,7 +72,7 @@ func primitiveNew(points []Point) Primitive {
 }
 
 func (fig *Figure) calcMassCenter() error {
-	rastr := fig.figToRastr(RastrTypeSimple, 1, 0)
+	rastr := fig.figToRastr(1, 0)
 	xsum := 0.0
 	ysum := 0.0
 	for i := 0; i < len(rastr.OuterContour); i++ {
@@ -147,7 +147,7 @@ func (figs Figures) Len() int {
 }
 
 func (figs Figures) Less(i, j int) bool {
-	return figs[i].Width*figs[i].Height < figs[j].Width*figs[j].Height
+	return figs[i].Width*figs[i].Height > figs[j].Width*figs[j].Height
 }
 
 func (figs Figures) Swap(i, j int) {
